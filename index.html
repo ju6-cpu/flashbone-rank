@@ -54,9 +54,17 @@
         }
 
         header p {
-            margin: 0 0 6px 0;
+            margin: 0 0 4px 0;
             color: var(--text-sub);
             font-size: 0.85rem;
+        }
+
+        .warning-text {
+            font-size: 0.75rem;
+            color: var(--boss-red);
+            margin-top: 4px;
+            margin-bottom: 6px;
+            font-weight: bold;
         }
 
         .update-time {
@@ -200,13 +208,13 @@
             border-radius: 12px;
         }
 
-        /* 3단 분리 그리드 레이아웃 적용으로 완벽한 닉네임 중앙 정렬 구현 */
+        /* 3단 그리드 고정으로 영상 유무와 상관없이 중앙 정렬 완벽 고정 */
         .ranking-main {
             display: grid;
-            grid-template-columns: 32px 1fr 70px;
+            grid-template-columns: 32px 1fr 80px;
             align-items: center;
             width: 100%;
-            gap: 10px;
+            gap: 8px;
         }
 
         .rank-badge {
@@ -225,17 +233,17 @@
         }
 
         .rank-badge.top-1 { 
-            background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(217, 119, 6, 0.1)); 
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.25), rgba(217, 119, 6, 0.15)); 
             color: #fde047; 
             border: 2px solid #fbbf24; 
         }
         .rank-badge.top-2 { 
-            background: linear-gradient(135deg, rgba(226, 232, 240, 0.15), rgba(148, 163, 184, 0.08)); 
+            background: linear-gradient(135deg, rgba(226, 232, 240, 0.2), rgba(148, 163, 184, 0.1)); 
             color: #f8fafc; 
             border: 2px solid #cbd5e1; 
         }
         .rank-badge.top-3 { 
-            background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(180, 83, 9, 0.08)); 
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(180, 83, 9, 0.1)); 
             color: #fb923c; 
             border: 2px solid #f59e0b; 
         }
@@ -248,16 +256,37 @@
             width: 100%;
         }
 
+        /* 1~3위 특별 스타일 (금, 은, 동 색상 및 크기 강조) */
+        .rank-1 .player-name { font-size: 1.15rem; color: #fde047; font-weight: 800; text-shadow: 0 0 10px rgba(251, 191, 36, 0.3); }
+        .rank-1 .player-score { font-size: 0.95rem; color: #fef08a; font-weight: bold; }
+
+        .rank-2 .player-name { font-size: 1.1rem; color: #f8fafc; font-weight: 800; text-shadow: 0 0 8px rgba(248, 250, 252, 0.3); }
+        .rank-2 .player-score { font-size: 0.9rem; color: #e2e8f0; font-weight: bold; }
+
+        .rank-3 .player-name { font-size: 1.05rem; color: #fb923c; font-weight: 800; text-shadow: 0 0 8px rgba(251, 146, 60, 0.3); }
+        .rank-3 .player-score { font-size: 0.85rem; color: #fed7aa; font-weight: bold; }
+
+        /* 4~10위 미세하게 작아지는 계단식 스타일 */
+        .rank-4 .player-name { font-size: 0.96rem; } .rank-4 .player-score { font-size: 0.79rem; }
+        .rank-5 .player-name { font-size: 0.94rem; } .rank-5 .player-score { font-size: 0.78rem; }
+        .rank-6 .player-name { font-size: 0.92rem; } .rank-6 .player-score { font-size: 0.77rem; }
+        .rank-7 .player-name { font-size: 0.90rem; } .rank-7 .player-score { font-size: 0.76rem; }
+        .rank-8 .player-name { font-size: 0.88rem; } .rank-8 .player-score { font-size: 0.75rem; }
+        .rank-9 .player-name { font-size: 0.86rem; } .rank-9 .player-score { font-size: 0.74rem; }
+        .rank-10 .player-name { font-size: 0.84rem; } .rank-10 .player-score { font-size: 0.73rem; }
+
+        /* 11위 이후 기본 스타일 */
         .player-name {
             font-weight: bold;
-            font-size: 0.95rem;
+            font-size: 0.84rem;
             margin-bottom: 2px;
             word-break: break-all;
         }
 
         .player-score {
-            font-size: 0.8rem;
+            font-size: 0.73rem;
             color: var(--text-sub);
+            font-weight: bold;
         }
 
         .player-actions {
@@ -265,6 +294,7 @@
             gap: 4px;
             align-items: center;
             justify-content: flex-end;
+            width: 100%;
         }
 
         .badge-btn {
@@ -321,6 +351,7 @@
             
             <h1>초봉식쉼터 : 우리동네 후레쉬봉 기록</h1>
             <p>순위등록을 원하시는 분께서는 방장찾아주세요~</p>
+            <div class="warning-text">⚠️ 혹시나 부정행위로 후레쉬봉 하다 뽀록나면… 깨끗이 후레쉬봉 합시다!</div>
             <div id="updateInfo" class="update-time">최종 갱신일시 불러오는 중...</div>
             <div class="collab-text">[관리자 : 초봉식쉼터 물갈이 x 방장 민시은 콜라보]</div>
             
@@ -614,6 +645,7 @@
             filtered.forEach((player, displayIndex) => {
                 const rank = displayIndex + 1;
                 let rankClass = "";
+                let rankStyleClass = `rank-${rank}`;
 
                 if (rank === 1) rankClass = "top-1";
                 else if (rank === 2) rankClass = "top-2";
@@ -623,7 +655,7 @@
                     <div class="ranking-item">
                         <div class="ranking-main">
                             <div class="rank-badge ${rankClass}">${rank}</div>
-                            <div class="player-detail">
+                            <div class="player-detail ${rankStyleClass}">
                                 <div class="player-name">${escapeHtml(player.name)}</div>
                                 <div class="player-score">${player.score.toLocaleString()}점</div>
                             </div>
