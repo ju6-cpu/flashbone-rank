@@ -466,7 +466,7 @@
         }
 
         function updateHeaderInfo() {
-            document.getElementById("updateInfo").textContent = `🚦실시간 랭킹 시스템🚦 (최종 갱신: ${updatedAt})`;
+            document.getElementById("updateInfo").innerHTML = `🚦실시간 랭킹 시스템🚦<br><span style="font-size: 0.75rem; color: var(--text-sub);">(최종 갱신: ${updatedAt})</span>`;
         }
 
         function togglePasswordBox() {
