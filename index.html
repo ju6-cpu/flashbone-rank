@@ -327,7 +327,7 @@
             font-family: 'Gowun Dodum', sans-serif;
         }
 
-        /* 일반 한마디 칸 */
+        /* 일반 한마디 칸 (텍스트 중앙 정렬) */
         .comment-box {
             margin-top: 8px;
             font-size: 0.8rem;
@@ -338,23 +338,27 @@
             border-left: 2.5px solid var(--boss-blue);
             line-height: 1.4;
             word-break: break-all;
+            text-align: center;
         }
 
-        /* 1~3위 전용 번쩍이는 한마디 칸 */
+        /* 1~3위 전용 번쩍이는 한마디 칸 (텍스트 중앙 정렬) */
         .comment-box.comment-1 {
             background: rgba(251, 191, 36, 0.1);
             border-left: 3px solid #fbbf24;
             color: #fef08a;
+            text-align: center;
         }
         .comment-box.comment-2 {
             background: rgba(203, 213, 225, 0.1);
             border-left: 3px solid #cbd5e1;
             color: #f8fafc;
+            text-align: center;
         }
         .comment-box.comment-3 {
             background: rgba(245, 158, 11, 0.1);
             border-left: 3px solid #f59e0b;
             color: #fed7aa;
+            text-align: center;
         }
 
         footer {
@@ -563,7 +567,7 @@
 
         function checkPassword() {
             const pwd = document.getElementById("adminPwd").value;
-            if (pwd === "1234") {
+            if (pwd === "9246") {
                 document.getElementById("adminPanel").style.display = "block";
                 document.getElementById("passwordBox").style.display = "none";
                 document.getElementById("adminPwd").value = "";
