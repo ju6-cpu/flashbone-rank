@@ -216,6 +216,14 @@
             min-height: 40px;
         }
 
+        .rank-badge-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            z-index: 2;
+            flex-shrink: 0;
+        }
+
         .rank-badge {
             width: 32px;
             height: 32px;
@@ -228,9 +236,17 @@
             font-size: 0.9rem;
             border: 1.5px solid var(--border-color);
             color: var(--text-sub);
-            flex-shrink: 0;
-            z-index: 2;
         }
+
+        .rank-diff {
+            font-size: 0.8rem;
+            font-weight: bold;
+            width: 16px;
+            text-align: center;
+        }
+        .diff-up { color: var(--boss-green); }
+        .diff-down { color: var(--boss-red); }
+        .diff-same { color: var(--text-sub); opacity: 0.4; }
 
         .rank-badge.top-1 { 
             background: linear-gradient(135deg, rgba(251, 191, 36, 0.25), rgba(217, 119, 6, 0.15)); 
@@ -327,7 +343,6 @@
             font-family: 'Gowun Dodum', sans-serif;
         }
 
-        /* 일반 한마디 칸 (텍스트 중앙 정렬) */
         .comment-box {
             margin-top: 8px;
             font-size: 0.8rem;
@@ -341,7 +356,6 @@
             text-align: center;
         }
 
-        /* 1~3위 전용 번쩍이는 한마디 칸 (텍스트 중앙 정렬) */
         .comment-box.comment-1 {
             background: rgba(251, 191, 36, 0.1);
             border-left: 3px solid #fbbf24;
@@ -506,7 +520,11 @@
                     rankings = data.record.rankings;
                     updatedAt = data.record.updatedAt || "2026/09/11 22:00";
                 } else {
+                    // 기본 데이터 로드 시점에도 prevRank 기본 세팅
                     rankings = defaultRankings;
+                    rankings.sort((a, b) => b.score - a.score);
+                    rankings.forEach((p, idx) => p.prevRank = idx + 1);
+                    
                     updatedAt = getFormattedDate();
                     await saveRankingsToCloud();
                 }
@@ -519,12 +537,19 @@
             } catch (error) {
                 console.error("데이터 로드 실패:", error);
                 rankings = defaultRankings;
+                rankings.sort((a, b) => b.score - a.score);
+                rankings.forEach((p, idx) => p.prevRank = idx + 1);
                 renderRankings();
             }
         }
 
         async function saveRankingsToCloud() {
             try {
+                rankings.sort((a, b) => b.score - a.score);
+                rankings.forEach((p, idx) => {
+                    p.prevRank = idx + 1; 
+                });
+
                 updatedAt = getFormattedDate();
                 const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
                     method: 'PUT',
@@ -640,7 +665,6 @@
                 rankings[idx].comment = comment;
             }
 
-            rankings.sort((a, b) => b.score - a.score);
             saveRankingsToCloud();
 
             document.getElementById("selectPlayer").value = "NEW";
@@ -686,10 +710,22 @@
                     commentClass = "comment-3";
                 }
 
+                let diffHtml = `<span class="rank-diff diff-same">-</span>`;
+                if (player.prevRank !== undefined) {
+                    if (realRank < player.prevRank) {
+                        diffHtml = `<span class="rank-diff diff-up" title="상승">▲</span>`;
+                    } else if (realRank > player.prevRank) {
+                        diffHtml = `<span class="rank-diff diff-down" title="하락">▼</span>`;
+                    }
+                }
+
                 let html = `
                     <div class="ranking-item">
                         <div class="ranking-main">
-                            <div class="rank-badge ${rankClass}">${realRank}</div>
+                            <div class="rank-badge-wrapper">
+                                <div class="rank-badge ${rankClass}">${realRank}</div>
+                                ${diffHtml}
+                            </div>
                             <div class="player-detail ${rankStyleClass}">
                                 <div class="player-name">${escapeHtml(player.name)}</div>
                                 <div class="player-score">${player.score.toLocaleString()}점</div>
