@@ -444,9 +444,9 @@
         </footer>
     </div>
 
-    <script>
-        const BIN_ID = '6aa3eab6ac6210605ac05f87';       
-        const API_KEY = '$2a$10$RmfWAiw2/bYaQ0kXs9tE/O5lorlwX9gAv9xybuHxsLunGPuGw4oFG';   
+<script>
+        const BIN_ID = '6aa3eab6ac6210605ac05f87';        
+        const API_KEY = '$2a$10$RmfWAiw2/bYaQ0kXs9tE/O5lorlwX9gAv9xybuHxsLunGPuGw4oFG';    
 
         let rankings = [];
         let updatedAt = "";
@@ -520,8 +520,10 @@
                     rankings = data.record.rankings;
                     updatedAt = data.record.updatedAt || "2026/09/11 22:00";
                     
-                    // 데이터가 있으나 prevRank가 없는 항목이 있다면 현재 등수로 초기화
+                    // 점수 기준 내림차순 정렬
                     rankings.sort((a, b) => b.score - a.score);
+                    
+                    // 만약 서버 데이터에 prevRank가 없다면 현재 등수로 초기화
                     let needsInitialSave = false;
                     rankings.forEach((p, idx) => {
                         if (p.prevRank === undefined) {
@@ -537,7 +539,7 @@
                     rankings.sort((a, b) => b.score - a.score);
                     rankings.forEach((p, idx) => p.prevRank = idx + 1);
                     updatedAt = getFormattedDate();
-                    await saveRankingsToCloud();
+                    await saveRankingsToCloudSilent();
                 }
                 
                 updateHeaderInfo();
@@ -556,23 +558,6 @@
 
         async function saveRankingsToCloud() {
             try {
-                // 1. 현재 점수 기준으로 먼저 정렬
-                rankings.sort((a, b) => b.score - a.score);
-
-                // 2. 저장하기 직전의 '현재 등수'를 캐치해서 임시 배열에 등수 보관
-                let currentRanks = {};
-                rankings.forEach((p, idx) => {
-                    currentRanks[p.name] = idx + 1;
-                });
-
-                // 3. 기존에 저장되어 있던 등수를 prevRank로 확정하고, 현재 등수로 갱신
-                rankings.forEach((p, idx) => {
-                    // 만약 서버 데이터가 처음이라 prevRank가 없었다면 현재 등수 대입
-                    if (p.prevRank === undefined) {
-                        p.prevRank = idx + 1;
-                    }
-                });
-
                 updatedAt = getFormattedDate();
                 const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
                     method: 'PUT',
@@ -584,11 +569,6 @@
                 });
 
                 if (response.ok) {
-                    // 저장 성공 후, 다음번 비교를 위해 방금 저장한 '현재 등수'를 prevRank로 덮어씌움
-                    rankings.forEach((p, idx) => {
-                        p.prevRank = idx + 1;
-                    });
-
                     updateHeaderInfo();
                     renderRankings();
                     updatePlayerSelectOptions();
@@ -602,10 +582,6 @@
 
         async function saveRankingsToCloudSilent() {
             try {
-                rankings.sort((a, b) => b.score - a.score);
-                rankings.forEach((p, idx) => {
-                    if (p.prevRank === undefined) p.prevRank = idx + 1;
-                });
                 await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
                     method: 'PUT',
                     headers: {
@@ -694,19 +670,17 @@
                 link = 'https://' + link;
             }
 
-            const selectedIdx = document.getElementById("selectPlayer").value;
-
-            // 수정 전, 현재 목록에서의 순위를 미리 백업해둠 (이전 등수 비교용)
+            // 1. 점수 변경 전, 현재 화면에 매겨져 있는 실제 순위(1등부터 시작)를 '이전 순위(prevRank)'로 확정함
             rankings.sort((a, b) => b.score - a.score);
-            let oldRanks = {};
             rankings.forEach((p, idx) => {
-                oldRanks[p.name] = idx + 1;
+                p.prevRank = idx + 1;
             });
+
+            const selectedIdx = document.getElementById("selectPlayer").value;
 
             if (selectedIdx === "NEW") {
                 const existing = rankings.find(p => p.name === name);
                 if (existing) {
-                    existing.prevRank = oldRanks[name] || 1;
                     existing.score = score;
                     existing.link = link;
                     existing.comment = comment;
@@ -715,20 +689,16 @@
                 }
             } else {
                 const idx = parseInt(selectedIdx);
-                rankings[idx].prevRank = oldRanks[rankings[idx].name] || (idx + 1);
                 rankings[idx].name = name;
                 rankings[idx].score = score;
                 rankings[idx].link = link;
                 rankings[idx].comment = comment;
             }
 
-            // 나머지 플레이어들도 기존 순위를 prevRank에 반영
-            rankings.forEach((p, idx) => {
-                if (oldRanks[p.name] !== undefined) {
-                    p.prevRank = oldRanks[p.name];
-                }
-            });
+            // 2. 새로운 점수로 재정렬
+            rankings.sort((a, b) => b.score - a.score);
 
+            // 3. 클라우드 저장
             saveRankingsToCloud();
 
             document.getElementById("selectPlayer").value = "NEW";
@@ -737,7 +707,15 @@
 
         function removePlayer(index) {
             if (confirm(`${rankings[index].name}님의 기록을 삭제하시겠습니까?`)) {
+                // 삭제 전 현재 순위 백업
+                rankings.sort((a, b) => b.score - a.score);
+                rankings.forEach((p, idx) => {
+                    p.prevRank = idx + 1;
+                });
+                
                 rankings.splice(index, 1);
+                
+                rankings.sort((a, b) => b.score - a.score);
                 saveRankingsToCloud();
             }
         }
