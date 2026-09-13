@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>초봉식쉼터 : 우리동네 후레쉬봉 기록</title>
+    <title>초봉식쉼터 : 우리동네 후레쉬봉 명예의 전당</title>
+    <meta property="og:title" content="초봉식쉼터 : 후뢰시봉 명예의 전당">
+    <meta property="og:description" content="우리동네 최고의 후레쉬봉 기록과 실시간 순위 변동을 확인하세요!">
     <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -520,7 +522,6 @@
                     rankings = data.record.rankings;
                     updatedAt = data.record.updatedAt || "2026/09/11 22:00";
                 } else {
-                    // 기본 데이터 로드 시점에도 prevRank 기본 세팅
                     rankings = defaultRankings;
                     rankings.sort((a, b) => b.score - a.score);
                     rankings.forEach((p, idx) => p.prevRank = idx + 1);
@@ -545,6 +546,7 @@
 
         async function saveRankingsToCloud() {
             try {
+                // 저장 직전 정렬된 상태의 실시간 등수를 prevRank로 확실하게 기록
                 rankings.sort((a, b) => b.score - a.score);
                 rankings.forEach((p, idx) => {
                     p.prevRank = idx + 1; 
@@ -683,8 +685,10 @@
             const searchKeyword = document.getElementById("searchInput").value.toLowerCase().trim();
             listEl.innerHTML = "";
 
+            // 점수 기준 내림차순 정렬
             rankings.sort((a, b) => b.score - a.score);
 
+            // 검색 필터링 적용 (원래 배열에서의 인덱스도 보존)
             const filtered = rankings.map((player, originalIndex) => ({ ...player, originalIndex }))
                                       .filter(player => player.name.toLowerCase().includes(searchKeyword));
 
@@ -693,10 +697,11 @@
                 return;
             }
 
-            filtered.forEach((player) => {
-                const realRank = player.originalIndex + 1;
+            // 정렬된 순서대로 실시간 등수 부여 (i + 1)
+            filtered.forEach((player, i) => {
+                const realRank = i + 1;
                 let rankClass = "";
-                let rankStyleClass = `rank-${realRank}`;
+                let rankStyleClass = `rank-${realRank <= 10 ? realRank : 10}`;
                 let commentClass = "";
 
                 if (realRank === 1) {
@@ -710,6 +715,7 @@
                     commentClass = "comment-3";
                 }
 
+                // 순위 변동 비교 (현재 실시간 등수 realRank와 저장된 직전 등수 prevRank 비교)
                 let diffHtml = `<span class="rank-diff diff-same">-</span>`;
                 if (player.prevRank !== undefined) {
                     if (realRank < player.prevRank) {
