@@ -3,9 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>초봉식쉼터 : 우리동네 후레쉬봉 명예의 전당</title>
-    <meta property="og:title" content="초봉식쉼터 : 후뢰시봉 명예의 전당">
-    <meta property="og:description" content="우리동네 최고의 후레쉬봉 기록과 실시간 순위 변동을 확인하세요!">
+    <title>초봉식쉼터 : 우리동네 후레쉬봉 기록</title>
     <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -521,11 +519,23 @@
                 if (data.record && data.record.rankings && data.record.rankings.length > 0) {
                     rankings = data.record.rankings;
                     updatedAt = data.record.updatedAt || "2026/09/11 22:00";
+                    
+                    // 데이터가 있으나 prevRank가 없는 항목이 있다면 현재 등수로 초기화
+                    rankings.sort((a, b) => b.score - a.score);
+                    let needsInitialSave = false;
+                    rankings.forEach((p, idx) => {
+                        if (p.prevRank === undefined) {
+                            p.prevRank = idx + 1;
+                            needsInitialSave = true;
+                        }
+                    });
+                    if (needsInitialSave) {
+                        await saveRankingsToCloudSilent();
+                    }
                 } else {
                     rankings = defaultRankings;
                     rankings.sort((a, b) => b.score - a.score);
                     rankings.forEach((p, idx) => p.prevRank = idx + 1);
-                    
                     updatedAt = getFormattedDate();
                     await saveRankingsToCloud();
                 }
@@ -546,10 +556,21 @@
 
         async function saveRankingsToCloud() {
             try {
-                // 저장 직전 정렬된 상태의 실시간 등수를 prevRank로 확실하게 기록
+                // 1. 현재 점수 기준으로 먼저 정렬
                 rankings.sort((a, b) => b.score - a.score);
+
+                // 2. 저장하기 직전의 '현재 등수'를 캐치해서 임시 배열에 등수 보관
+                let currentRanks = {};
                 rankings.forEach((p, idx) => {
-                    p.prevRank = idx + 1; 
+                    currentRanks[p.name] = idx + 1;
+                });
+
+                // 3. 기존에 저장되어 있던 등수를 prevRank로 확정하고, 현재 등수로 갱신
+                rankings.forEach((p, idx) => {
+                    // 만약 서버 데이터가 처음이라 prevRank가 없었다면 현재 등수 대입
+                    if (p.prevRank === undefined) {
+                        p.prevRank = idx + 1;
+                    }
                 });
 
                 updatedAt = getFormattedDate();
@@ -561,7 +582,13 @@
                     },
                     body: JSON.stringify({ rankings: rankings, updatedAt: updatedAt })
                 });
+
                 if (response.ok) {
+                    // 저장 성공 후, 다음번 비교를 위해 방금 저장한 '현재 등수'를 prevRank로 덮어씌움
+                    rankings.forEach((p, idx) => {
+                        p.prevRank = idx + 1;
+                    });
+
                     updateHeaderInfo();
                     renderRankings();
                     updatePlayerSelectOptions();
@@ -570,6 +597,25 @@
             } catch (error) {
                 console.error("데이터 저장 실패:", error);
                 alert("저장 중 오류가 발생했습니다.");
+            }
+        }
+
+        async function saveRankingsToCloudSilent() {
+            try {
+                rankings.sort((a, b) => b.score - a.score);
+                rankings.forEach((p, idx) => {
+                    if (p.prevRank === undefined) p.prevRank = idx + 1;
+                });
+                await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': API_KEY
+                    },
+                    body: JSON.stringify({ rankings: rankings, updatedAt: updatedAt })
+                });
+            } catch (e) {
+                console.error(e);
             }
         }
 
@@ -650,22 +696,38 @@
 
             const selectedIdx = document.getElementById("selectPlayer").value;
 
+            // 수정 전, 현재 목록에서의 순위를 미리 백업해둠 (이전 등수 비교용)
+            rankings.sort((a, b) => b.score - a.score);
+            let oldRanks = {};
+            rankings.forEach((p, idx) => {
+                oldRanks[p.name] = idx + 1;
+            });
+
             if (selectedIdx === "NEW") {
                 const existing = rankings.find(p => p.name === name);
                 if (existing) {
+                    existing.prevRank = oldRanks[name] || 1;
                     existing.score = score;
                     existing.link = link;
                     existing.comment = comment;
                 } else {
-                    rankings.push({ name, score, link, comment });
+                    rankings.push({ name, score, link, comment, prevRank: rankings.length + 1 });
                 }
             } else {
                 const idx = parseInt(selectedIdx);
+                rankings[idx].prevRank = oldRanks[rankings[idx].name] || (idx + 1);
                 rankings[idx].name = name;
                 rankings[idx].score = score;
                 rankings[idx].link = link;
                 rankings[idx].comment = comment;
             }
+
+            // 나머지 플레이어들도 기존 순위를 prevRank에 반영
+            rankings.forEach((p, idx) => {
+                if (oldRanks[p.name] !== undefined) {
+                    p.prevRank = oldRanks[p.name];
+                }
+            });
 
             saveRankingsToCloud();
 
@@ -685,10 +747,8 @@
             const searchKeyword = document.getElementById("searchInput").value.toLowerCase().trim();
             listEl.innerHTML = "";
 
-            // 점수 기준 내림차순 정렬
             rankings.sort((a, b) => b.score - a.score);
 
-            // 검색 필터링 적용 (원래 배열에서의 인덱스도 보존)
             const filtered = rankings.map((player, originalIndex) => ({ ...player, originalIndex }))
                                       .filter(player => player.name.toLowerCase().includes(searchKeyword));
 
@@ -697,11 +757,10 @@
                 return;
             }
 
-            // 정렬된 순서대로 실시간 등수 부여 (i + 1)
-            filtered.forEach((player, i) => {
-                const realRank = i + 1;
+            filtered.forEach((player) => {
+                const realRank = player.originalIndex + 1;
                 let rankClass = "";
-                let rankStyleClass = `rank-${realRank <= 10 ? realRank : 10}`;
+                let rankStyleClass = `rank-${realRank}`;
                 let commentClass = "";
 
                 if (realRank === 1) {
@@ -715,7 +774,8 @@
                     commentClass = "comment-3";
                 }
 
-                // 순위 변동 비교 (현재 실시간 등수 realRank와 저장된 직전 등수 prevRank 비교)
+                // 순위 변동 비교 (현재 등수 realRank와 이전 등수 player.prevRank 비교)
+                // 숫자가 작아질수록 순위가 상승한 것 (예: 5등 -> 3등은 realRank(3) < prevRank(5))
                 let diffHtml = `<span class="rank-diff diff-same">-</span>`;
                 if (player.prevRank !== undefined) {
                     if (realRank < player.prevRank) {
